@@ -2,13 +2,24 @@ from multiprocessing.pool import ThreadPool
 import os
 import shutil
 import gzip
-import jsonlines
+import copy
 from datetime import datetime, timedelta
+import jsonlines
 from dotenv import dotenv_values
 from internetarchive import get_session
 
 THREAD_COUNT = 24
-DATE = (datetime.today() - timedelta(4)).strftime("%Y-%m-%d")
+DATE = (datetime.today() - timedelta(1)).strftime("%Y-%m-%d")
+EXCLUDECOLS = [
+    "upload_date",
+    "channel_id",
+    "view_count",
+    "average_rating",
+    "age_limit",
+    "subtitles",
+    "like_count",
+    "automatic_captions",
+]
 
 
 def download_item(identifier, name):
@@ -52,6 +63,10 @@ for i in range(0, 24):
         with jsonlines.open(
             f"video-metadata-with-lang-{DATE}.jsonl", mode="a"
         ) as writer:
-            writer.write_all(reader.iter())
+            lines = copy.deepcopy(list(reader.iter()))
+            for line in lines:
+                for col in EXCLUDECOLS:
+                    del line[col]
+                writer.write(line)
 
 shutil.rmtree(f"YT-VIDEO-METADATA-{DATE}")
