@@ -1,14 +1,14 @@
 from multiprocessing.pool import ThreadPool
 import os
-import subprocess
 import shutil
+import gzip
 import jsonlines
 from datetime import datetime, timedelta
 from dotenv import dotenv_values
 from internetarchive import get_session
 
 THREAD_COUNT = 24
-YESTERDAY = (datetime.today() - timedelta(5)).strftime("%Y-%m-%d")
+DATE = (datetime.today() - timedelta(4)).strftime("%Y-%m-%d")
 
 
 def download_item(identifier, name):
@@ -24,25 +24,34 @@ cookies = {
     }
 }
 s = get_session(config=cookies)
-item = s.get_item((f"YT-VIDEO-METADATA-{YESTERDAY}"))
-files = [(item, f"YT-VIDEO-METADATA-{YESTERDAY}-{i:02}.jsonl.gz") for i in range(0, 24)]
+item = s.get_item((f"YT-VIDEO-METADATA-{DATE}"))
+files = [(item, f"YT-VIDEO-METADATA-{DATE}-{i:02}.jsonl.gz") for i in range(0, 24)]
 with ThreadPool(THREAD_COUNT) as pool:
     pool.starmap(download_item, files)
 
-subprocess.call("./unzip.sh")
+for i in range(0, 24):
+    with gzip.open(
+        f"YT-VIDEO-METADATA-{DATE}/YT-VIDEO-METADATA-{DATE}-{i:02}.jsonl.gz",
+        "rb",
+    ) as f_in:
+        with open(
+            f"YT-VIDEO-METADATA-{DATE}/YT-VIDEO-METADATA-{DATE}-{i:02}.jsonl",
+            "wb",
+        ) as f_out:
+            shutil.copyfileobj(f_in, f_out)
 
 output_jsonl = []
 
-if os.path.isfile(f"video-metadata-with-lang-{YESTERDAY}.jsonl"):
-    os.remove(f"video-metadata-with-lang-{YESTERDAY}.jsonl")
+if os.path.isfile(f"video-metadata-with-lang-{DATE}.jsonl"):
+    os.remove(f"video-metadata-with-lang-{DATE}.jsonl")
 
 for i in range(0, 24):
     with jsonlines.open(
-        f"YT-VIDEO-METADATA-{YESTERDAY}/YT-VIDEO-METADATA-{YESTERDAY}-{i:02}.jsonl"
+        f"YT-VIDEO-METADATA-{DATE}/YT-VIDEO-METADATA-{DATE}-{i:02}.jsonl"
     ) as reader:
         with jsonlines.open(
-            f"video-metadata-with-lang-{YESTERDAY}.jsonl", mode="a"
+            f"video-metadata-with-lang-{DATE}.jsonl", mode="a"
         ) as writer:
             writer.write_all(reader.iter())
 
-shutil.rmtree(f"YT-VIDEO-METADATA-{YESTERDAY}")
+shutil.rmtree(f"YT-VIDEO-METADATA-{DATE}")
