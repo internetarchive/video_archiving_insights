@@ -9,7 +9,7 @@ from dotenv import dotenv_values
 from internetarchive import get_session
 
 THREAD_COUNT = 24
-DEFAULT_DATE = (datetime.today() - timedelta(1)).strftime("%Y-%m-%d")
+YESTERDAY = (datetime.today() - timedelta(1)).strftime("%Y-%m-%d")
 EXCLUDECOLS = [
     "upload_date",
     "channel_id",
@@ -26,7 +26,7 @@ def download_item(identifier, name):
     identifier.download(name)
 
 
-def main(date=DEFAULT_DATE):
+def main(date=YESTERDAY):
     config = dotenv_values(".env")
 
     cookies = {
