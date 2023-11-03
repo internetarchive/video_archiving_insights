@@ -160,3 +160,4 @@ cython_debug/
 #.idea/
 
 video-metadata-with-lang-*.jsonl
+.DS_Store
