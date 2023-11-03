@@ -55,9 +55,12 @@ def chunker(seq, size):
 @st.cache_data
 def load_local_data(day):
     fp = f"{DATALOC}video-metadata-with-lang-{day}.jsonl"
+    # download metadata file
     if not os.path.isfile(fp):
         download_metadata(day)
     df = pd.read_json(fp, lines=True)
+    # remove file because dataframe is cached by streamlit
+    os.remove(fp)
     if len(df) == 0:
         st.warning(f"No metadata available for the day: {day}")
         st.stop()
@@ -96,7 +99,10 @@ day = st.date_input("Videos archived on", date.today() - timedelta(days=1))
 try:
     data = load_local_data(day)
 except URLError as e:
-    st.warning(f"No metadata file found for the day: {day}")
+    st.warning(
+        f"Unable to show statistics because there is no metadata found for the day: {day}."
+        "Please select a different day."
+    )
     st.stop()
 
 vids = len(data)
