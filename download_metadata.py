@@ -1,11 +1,12 @@
 from multiprocessing.pool import ThreadPool
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import shutil
 import gzip
 import copy
 from datetime import datetime, timedelta
 import jsonlines
-from dotenv import dotenv_values
+import streamlit as st
 from internetarchive import download as download_item
 
 THREAD_COUNT = 12
@@ -22,15 +23,33 @@ EXCLUDECOLS = [
 ]
 
 
-def download_item_helper(identifier, filename):
-    download_item(identifier, identifier+filename)
+def download_ia_metadata(filenames, date):
+    """download of metadata"""
+    with ThreadPoolExecutor() as executor:
+        progress_bar = st.progress(0)
+        placeholder = st.empty()
+        futures = [
+            executor.submit(
+                download_item, identifier, identifier + filename, checksum=True
+            )
+            for (identifier, filename) in filenames
+        ]
+        # results = []
+        for idx, future in enumerate(as_completed(futures), start=1):
+            progress = idx / len(filenames)
+            placeholder.text(f"Downloading {date} - {int(progress * 100)}%")
+            # update progress bar
+            progress_bar.progress(progress)
+        progress_bar.empty()
+        placeholder.empty()
 
 
 def main(date=YESTERDAY):
     # generate list of filenames and download in parallel
-    filenames = [(f"YT-VIDEO-METADATA-{date}", f"-{i:02}.jsonl.gz") for i in range(0, 24)]
-    with ThreadPool(THREAD_COUNT) as pool:
-        pool.starmap(download_item_helper, filenames)
+    filenames = [
+        (f"YT-VIDEO-METADATA-{date}", f"-{i:02}.jsonl.gz") for i in range(0, 24)
+    ]
+    download_ia_metadata(filenames, date)
 
     # unzip files
     for i in range(0, 24):
