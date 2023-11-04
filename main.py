@@ -52,7 +52,7 @@ def chunker(seq, size):
     return (seq[pos : pos + size] for pos in range(0, len(seq), size))
 
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def load_local_data(day):
     fp = f"{DATALOC}video-metadata-with-lang-{day}.jsonl"
     # download metadata file
@@ -60,7 +60,7 @@ def load_local_data(day):
         download_metadata(day)
     df = pd.read_json(fp, lines=True)
     # remove file because dataframe is cached by streamlit
-    os.remove(fp)
+    # os.remove(fp)
     if len(df) == 0:
         st.warning(f"No metadata available for the day: {day}")
         st.stop()
@@ -96,29 +96,30 @@ def get_sumgrams(data, count=10, size=2):
 
 day = st.date_input("Videos archived on", date.today() - timedelta(days=1))
 
-try:
-    data = load_local_data(day)
-except URLError as e:
-    st.warning(
-        f"Unable to show statistics because there is no metadata found for the day: {day}."
-        "Please select a different day."
-    )
-    st.stop()
+with st.spinner("Preparing relevant metadata..."):
+    try:
+        data = load_local_data(day)
+    except URLError as e:
+        st.warning(
+            f"Unable to show statistics because there is no metadata found for the day: {day}."
+            "Please select a different day."
+        )
+        st.stop()
 
-vids = len(data)
-chan = len(pd.unique(data["uploader"]))
-tdur = data["duration"].sum()
-mdur = data["duration"].max()
+    vids = len(data)
+    chan = len(pd.unique(data["uploader"]))
+    tdur = data["duration"].sum()
+    mdur = data["duration"].max()
 
-try:
-    prev_day = day - timedelta(days=1)
-    prev_data = load_local_data(prev_day)
-    vids_diff = f"{vids-len(prev_data):,}"
-    chan_diff = f"{chan-len(pd.unique(prev_data['uploader'])):,}"
-    tdur_diff = htime(tdur - prev_data["duration"].sum())
-    mdur_diff = htime(mdur - prev_data["duration"].max())
-except URLError as e:
-    vids_diff = chan_diff = tdur_diff = mdur_diff = None
+    try:
+        prev_day = day - timedelta(days=1)
+        prev_data = load_local_data(prev_day)
+        vids_diff = f"{vids-len(prev_data):,}"
+        chan_diff = f"{chan-len(pd.unique(prev_data['uploader'])):,}"
+        tdur_diff = htime(tdur - prev_data["duration"].sum())
+        mdur_diff = htime(mdur - prev_data["duration"].max())
+    except URLError as e:
+        vids_diff = chan_diff = tdur_diff = mdur_diff = None
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Videos", f"{vids:,}", vids_diff)
