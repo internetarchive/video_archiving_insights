@@ -60,7 +60,7 @@ def load_local_data(day):
         download_metadata(day)
     df = pd.read_json(fp, lines=True)
     # remove file because dataframe is cached by streamlit
-    # os.remove(fp)
+    os.remove(fp)
     if len(df) == 0:
         st.warning(f"No metadata available for the day: {day}")
         st.stop()
