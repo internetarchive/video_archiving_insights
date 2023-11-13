@@ -64,7 +64,9 @@ def load_local_data(day):
     if len(df) == 0:
         st.warning(f"No metadata available for the day: {day}")
         st.stop()
-    df["categories"] = df["categories"].apply(lambda c: "+".join(c))
+    df["categories"] = df["categories"].apply(
+        lambda c: "+".join(c) if c is not None else None
+    )
     return df
 
 
