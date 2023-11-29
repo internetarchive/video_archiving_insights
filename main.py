@@ -98,9 +98,9 @@ def get_sumgrams(data, count=10, size=2):
 
 # this gives the metadata generation an hour to complete before allowing the user to access it
 max_value = (
-    date.today() - timedelta(days=1)
+    datetime.utcnow().date() - timedelta(days=2)
     if datetime.utcnow().time().hour < 1
-    else date.today()
+    else datetime.utcnow().date() - timedelta(days=1)
 )
 
 day = st.date_input("Videos archived on", value=max_value, max_value=max_value)
