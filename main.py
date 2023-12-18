@@ -67,7 +67,9 @@ def load_local_data(day):
     # remove file because dataframe is cached by streamlit
     os.remove(fp)
     if len(df) == 0:
-        st.warning(f"Metadata files indicate there no videos downloaded for the day: {day}")
+        st.warning(
+            f"Metadata files indicate there no videos downloaded for the day: {day}"
+        )
         st.stop()
     df["categories"] = df["categories"].apply(
         lambda c: "+".join(c) if c is not None else None
@@ -108,7 +110,17 @@ max_value = (
     else datetime.utcnow().date() - timedelta(days=1)
 )
 
-day = st.date_input("Videos archived on", value=max_value, max_value=max_value)
+qp = st.experimental_get_query_params()
+if "date" not in st.session_state and qp.get("date"):
+    st.session_state["date"] = datetime.strptime(qp.get("date")[0], "%Y-%m-%d").date()
+else:
+    st.session_state["date"] = max_value
+
+day = st.date_input(
+    "Videos archived on", value=st.session_state["date"], max_value=max_value
+)
+
+st.experimental_set_query_params(date=day)
 
 with st.spinner("Preparing relevant metadata..."):
     try:
