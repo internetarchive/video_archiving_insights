@@ -67,7 +67,7 @@ def load_local_data(day):
     # remove file because dataframe is cached by streamlit
     os.remove(fp)
     if len(df) == 0:
-        st.warning(f"Metadata files contain no records for the day: {day}")
+        st.warning(f"Metadata files indicate there no videos downloaded for the day: {day}")
         st.stop()
     df["categories"] = df["categories"].apply(
         lambda c: "+".join(c) if c is not None else None
