@@ -57,12 +57,17 @@ def load_local_data(day):
     fp = f"{DATALOC}video-metadata-with-lang-{day}.jsonl"
     # download metadata file
     if not os.path.isfile(fp):
-        download_metadata(day)
+        try:
+            download_metadata(day)
+        except FileNotFoundError as fileerror:
+            st.warning(f"Failed to load metadata for the day: {day}")
+            print(fileerror)
+            st.stop()
     df = pd.read_json(fp, lines=True)
     # remove file because dataframe is cached by streamlit
     os.remove(fp)
     if len(df) == 0:
-        st.warning(f"No metadata available for the day: {day}")
+        st.warning(f"Metadata files contain no records for the day: {day}")
         st.stop()
     df["categories"] = df["categories"].apply(
         lambda c: "+".join(c) if c is not None else None
