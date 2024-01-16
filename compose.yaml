@@ -1,0 +1,7 @@
+services:
+  video_archiving_insights:
+    build:
+      context: .
+    ports:
+      - '8501:8501'
+    restart: always
