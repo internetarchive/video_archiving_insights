@@ -7,9 +7,10 @@ import copy
 from datetime import datetime, timedelta
 import jsonlines
 import streamlit as st
-from internetarchive import download as download_item
+from internetarchive import get_item
 
 THREAD_COUNT = 12
+CONFIG_FILE = "./ia.ini"
 YESTERDAY = (datetime.today() - timedelta(1)).strftime("%Y-%m-%d")
 EXCLUDECOLS = [
     "upload_date",
@@ -23,16 +24,15 @@ EXCLUDECOLS = [
 ]
 
 
-def download_ia_metadata(filenames, date):
+def download_ia_metadata(item_id, filenames, date):
     """download of metadata"""
+    ia_item = get_item(item_id, config_file=CONFIG_FILE)
     with ThreadPoolExecutor() as executor:
         progress_bar = st.progress(0)
         placeholder = st.empty()
         futures = [
-            executor.submit(
-                download_item, identifier, identifier + filename, checksum=True
-            )
-            for (identifier, filename) in filenames
+            executor.submit(ia_item.download, filename, checksum=True)
+            for filename in filenames
         ]
         # results = []
         for idx, future in enumerate(as_completed(futures), start=1):
@@ -46,10 +46,9 @@ def download_ia_metadata(filenames, date):
 
 def main(date=YESTERDAY):
     # generate list of filenames and download in parallel
-    filenames = [
-        (f"YT-VIDEO-METADATA-{date}", f"-{i:02}.jsonl.gz") for i in range(0, 24)
-    ]
-    download_ia_metadata(filenames, date)
+    item_id = f"YT-VIDEO-METADATA-{date}"
+    filenames = [f"{item_id}-{i:02}.jsonl.gz" for i in range(0, 24)]
+    download_ia_metadata(item_id, filenames, date)
 
     # unzip files
     for i in range(0, 24):
