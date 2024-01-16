@@ -2,6 +2,7 @@
 
 A dashboard for video archiving insights based on accumulated metadata.
 
-# TODO
+## To run
 
-- [ ] Need clarification on format of dates (Ex. 2023-12-02-01 or 2023-12-02-1)
+1. Install the pip3 package `internetarchive` onto the host machine and run `ia configure`. Either copy or hardlink the credential file (i.e. `ia.ini`) into the root of the project directory. This is required in order for the Dockerfile to build properly.
+1. Run `docker compose up`
