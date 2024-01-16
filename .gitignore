@@ -161,3 +161,4 @@ cython_debug/
 
 video-metadata-with-lang-*.jsonl
 .DS_Store
+ia.ini
