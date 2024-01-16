@@ -10,7 +10,7 @@ import streamlit as st
 from internetarchive import get_item
 
 THREAD_COUNT = 12
-CONFIG_FILE = "./ia.ini"
+CONFIG_FILE = "ia.ini"
 YESTERDAY = (datetime.today() - timedelta(1)).strftime("%Y-%m-%d")
 EXCLUDECOLS = [
     "upload_date",
