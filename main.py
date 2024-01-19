@@ -97,8 +97,14 @@ def get_sumgrams(data, count=10, size=2):
     ]
     return {k: v for s in top_sumgrams for k, v in s.items()}
 
+
 def update_date():
     st.query_params.date = st.session_state.date
+
+
+def update_timewidth():
+    st.query_params.timewidth = st.session_state.timewidth
+
 
 # this gives the metadata generation an hour to complete before allowing the user to access it
 max_value = (
@@ -107,6 +113,8 @@ max_value = (
     else datetime.utcnow().date() - timedelta(days=1)
 )
 
+if "timewidth" not in st.query_params:
+    st.query_params.timewidth = "Day"
 if "date" not in st.query_params:
     st.query_params.date = max_value
 
@@ -122,7 +130,9 @@ timewidth_options = ["Day", "Week"]
 timewidth = st.selectbox(
     "View Mode",
     options=timewidth_options,
-    index=0,
+    index=timewidth_options.index(st.query_params.timewidth),
+    key="timewidth",
+    on_change=update_timewidth,
 )
 
 # st.experimental_set_query_params(date=day)
