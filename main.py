@@ -46,7 +46,7 @@ def chunker(seq, size):
 
 
 @st.cache_data(show_spinner=False)
-def load_local_data(day, _timewidth):
+def load_local_data(day: str, _timewidth: str):
     fp = f"{DATALOC}video-metadata-with-lang-{day}.jsonl"
     # download metadata file
     if not os.path.isfile(fp):
