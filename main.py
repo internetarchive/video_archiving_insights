@@ -53,7 +53,7 @@ def chunker(seq, size):
 
 
 @st.cache_data(show_spinner=False)
-def load_local_data(day):
+def load_local_data(day, _timewidth):
     fp = f"{DATALOC}video-metadata-with-lang-{day}.jsonl"
     # download metadata file
     if not os.path.isfile(fp):
@@ -62,7 +62,8 @@ def load_local_data(day):
         except FileNotFoundError as fileerror:
             st.warning(f"Failed to load metadata for the day: {day}")
             print(fileerror)
-            st.stop()
+            if _timewidth == "Day":
+                st.stop()
     df = pd.read_json(fp, lines=True)
     # remove file because dataframe is cached by streamlit
     os.remove(fp)
@@ -70,7 +71,8 @@ def load_local_data(day):
         st.warning(
             f"Metadata files indicate there no videos downloaded for the day: {day}"
         )
-        st.stop()
+        if _timewidth == "Day":
+            st.stop()
     df["categories"] = df["categories"].apply(
         lambda c: "+".join(c) if c is not None else None
     )
