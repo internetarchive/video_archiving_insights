@@ -97,6 +97,8 @@ def get_sumgrams(data, count=10, size=2):
     ]
     return {k: v for s in top_sumgrams for k, v in s.items()}
 
+def update_date():
+    st.query_params.date = st.session_state.date
 
 # this gives the metadata generation an hour to complete before allowing the user to access it
 max_value = (
@@ -112,9 +114,9 @@ day = st.date_input(
     "Videos archived on",
     value=datetime.strptime(st.query_params.date, "%Y-%m-%d").date(),
     max_value=max_value,
+    key="date",
+    on_change=update_date,
 )
-
-st.query_params.date = str(day)
 
 timewidth_options = ["Day", "Week"]
 timewidth = st.selectbox(
