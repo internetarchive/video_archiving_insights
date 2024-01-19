@@ -306,7 +306,7 @@ elif timewidth == "Week" or timewidth == "Month":
 
     dataframe = pd.DataFrame.from_dict(weeklong_dataset, orient="index")
 
-    "## Comparison of Metrics"
+    "## Metric Comparisons"
 
     "### Video Count"
     st.bar_chart(dataframe, y="Video Count")
@@ -314,8 +314,8 @@ elif timewidth == "Week" or timewidth == "Month":
     "### Channel Count"
     st.bar_chart(dataframe, y="Channel Count")
 
-    "### Total Duration of Videos"
+    "### Sum Duration of Videos"
     st.bar_chart(dataframe, y="Sum Duration (hours)")
 
-    "### Max Video Length"
+    "### Maximum Individual Video Length"
     st.bar_chart(dataframe, y="Max Duration (hours)")
