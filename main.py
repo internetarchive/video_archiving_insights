@@ -46,7 +46,7 @@ def chunker(seq, size):
 
 
 @st.cache_data(show_spinner=False)
-def load_local_data(day, _timewidth):
+def load_local_data(day: str, _timewidth: str):
     fp = f"{DATALOC}video-metadata-with-lang-{day}.jsonl"
     # download metadata file
     if not os.path.isfile(fp):
@@ -98,6 +98,24 @@ def get_sumgrams(data, count=10, size=2):
     return {k: v for s in top_sumgrams for k, v in s.items()}
 
 
+def update_date():
+    st.query_params.date = st.session_state.date
+
+
+def update_timewidth():
+    st.query_params.timewidth = st.session_state.timewidth
+
+
+def convert_timewidth_to_days(timewidth):
+    try:
+        if timewidth == "Week":
+            return 7
+        elif timewidth == "Month":
+            return 28
+    except Exception as exc:
+        raise ValueError("Invalid timewidth argument passed") from exc
+
+
 # this gives the metadata generation an hour to complete before allowing the user to access it
 max_value = (
     datetime.utcnow().date() - timedelta(days=2)
@@ -105,24 +123,29 @@ max_value = (
     else datetime.utcnow().date() - timedelta(days=1)
 )
 
-qp = st.experimental_get_query_params()
-if "date" not in st.session_state and qp.get("date"):
-    st.session_state["date"] = datetime.strptime(qp.get("date")[0], "%Y-%m-%d").date()
-else:
-    st.session_state["date"] = max_value
+if "timewidth" not in st.query_params:
+    st.query_params.timewidth = "Day"
+if "date" not in st.query_params:
+    st.query_params.date = max_value
 
 day = st.date_input(
-    "Videos archived on", value=st.session_state["date"], max_value=max_value
+    "Videos archived on",
+    value=datetime.strptime(st.query_params.date, "%Y-%m-%d").date(),
+    max_value=max_value,
+    key="date",
+    on_change=update_date,
 )
 
-timewidth_options = ["Day", "Week"]
+timewidth_options = ["Day", "Week", "Month"]
 timewidth = st.selectbox(
     "View Mode",
     options=timewidth_options,
-    index=0,
+    index=timewidth_options.index(st.query_params.timewidth),
+    key="timewidth",
+    on_change=update_timewidth,
 )
 
-st.experimental_set_query_params(date=day)
+# st.experimental_set_query_params(date=day)
 
 if timewidth == "Day":
     with st.spinner("Preparing relevant metadata..."):
@@ -260,10 +283,10 @@ if timewidth == "Day":
     "## Miscellaneous"
     with st.expander("Metadata sample"):
         st.write(data.head(10))
-elif timewidth == "Week":
+elif timewidth == "Week" or timewidth == "Month":
     with st.spinner("Preparing relevant metadata..."):
         weeklong_dataset = {}
-        for i in range(7):
+        for i in range(convert_timewidth_to_days(timewidth)):
             try:
                 data = load_local_data(str(day - timedelta(days=i)), timewidth)
                 weeklong_dataset[f"{day - timedelta(days=i)}"] = {
