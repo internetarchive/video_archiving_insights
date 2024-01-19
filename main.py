@@ -41,19 +41,12 @@ def htime(dur):
     return f"{dur:,.1f} {unit}"
 
 
-def getlang(text):
-    try:
-        return detect(text)
-    except:
-        return None
-
-
 def chunker(seq, size):
     return (seq[pos : pos + size] for pos in range(0, len(seq), size))
 
 
 @st.cache_data(show_spinner=False)
-def load_local_data(day):
+def load_local_data(day, _timewidth):
     fp = f"{DATALOC}video-metadata-with-lang-{day}.jsonl"
     # download metadata file
     if not os.path.isfile(fp):
@@ -62,7 +55,8 @@ def load_local_data(day):
         except FileNotFoundError as fileerror:
             st.warning(f"Failed to load metadata for the day: {day}")
             print(fileerror)
-            st.stop()
+            if _timewidth == "Day":
+                st.stop()
     df = pd.read_json(fp, lines=True)
     # remove file because dataframe is cached by streamlit
     os.remove(fp)
@@ -70,7 +64,8 @@ def load_local_data(day):
         st.warning(
             f"Metadata files indicate there no videos downloaded for the day: {day}"
         )
-        st.stop()
+        if _timewidth == "Day":
+            st.stop()
     df["categories"] = df["categories"].apply(
         lambda c: "+".join(c) if c is not None else None
     )
@@ -120,140 +115,184 @@ day = st.date_input(
     "Videos archived on", value=st.session_state["date"], max_value=max_value
 )
 
+timewidth_options = ["Day", "Week"]
+timewidth = st.selectbox(
+    "View Mode",
+    options=timewidth_options,
+    index=0,
+)
+
 st.experimental_set_query_params(date=day)
 
-with st.spinner("Preparing relevant metadata..."):
-    try:
-        data = load_local_data(day)
-    except URLError as e:
-        st.warning(
-            f"Unable to show statistics because there is no metadata found for the day: {day}."
-            "Please select a different day."
+if timewidth == "Day":
+    with st.spinner("Preparing relevant metadata..."):
+        try:
+            data = load_local_data(str(day), timewidth)
+        except URLError as e:
+            st.warning(
+                f"Unable to show statistics because there is no metadata found for the day: {day}."
+                "Please select a different day."
+            )
+            st.stop()
+
+        vids = len(data)
+        chan = len(pd.unique(data["uploader"]))
+        tdur = data["duration"].sum()
+        mdur = data["duration"].max()
+
+        try:
+            prev_day = day - timedelta(days=1)
+            prev_data = load_local_data(str(prev_day), timewidth)
+            vids_diff = f"{vids-len(prev_data):,}"
+            chan_diff = f"{chan-len(pd.unique(prev_data['uploader'])):,}"
+            tdur_diff = htime(tdur - prev_data["duration"].sum())
+            mdur_diff = htime(mdur - prev_data["duration"].max())
+        except URLError as e:
+            vids_diff = chan_diff = tdur_diff = mdur_diff = None
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Videos", f"{vids:,}", vids_diff)
+    col2.metric("Channels", f"{chan:,}", chan_diff)
+    col3.metric("Duration", htime(tdur), tdur_diff)
+    col4.metric("Longest", htime(mdur), mdur_diff, "inverse")
+
+    "## Lexical Highlights"
+
+    "### Top Tags"
+    tags_count = st.slider("Number of tags to show", 10, 100, 50, 10)
+    top_tags = get_tags(data, tags_count)
+    wc = WordCloud()
+    wc.generate_from_frequencies(top_tags.to_dict()["count"])
+    fig, ax = plt.subplots()
+    ax.imshow(wc)
+    ax.axis("off")
+    st.pyplot(fig)
+    with st.expander("See tags frequency"):
+        st.table(top_tags)
+
+    # "### Top Title Sumgrams"
+    # sumgrams_count = st.slider("Number of sumgrams to show", 10, 100, 50, 10)
+    # sumgram_size = st.slider("Base sumgram size", 1, 10, 3)
+    # top_sumgrams_dict = get_sumgrams(data, sumgrams_count, sumgram_size)
+    # wc = WordCloud()
+    # wc.generate_from_frequencies(top_sumgrams_dict)
+    # fig, ax = plt.subplots()
+    # ax.imshow(wc)
+    # ax.axis("off")
+    # st.pyplot(fig)
+    # with st.expander("See sumgram frequency"):
+    #     st.table(
+    #         pd.DataFrame(
+    #             [(k, v) for k, v in top_sumgrams_dict.items()],
+    #             columns=["sumgram", "frequency"],
+    #         )
+    #     )
+
+    "### Languages"
+    c = (
+        alt.Chart(data)
+        .mark_bar()
+        .encode(
+            x="count(language):Q",
+            y=alt.Y("language:N", sort="-x"),
+            tooltip=["language", "count(language)"],
         )
-        st.stop()
-
-    vids = len(data)
-    chan = len(pd.unique(data["uploader"]))
-    tdur = data["duration"].sum()
-    mdur = data["duration"].max()
-
-    try:
-        prev_day = day - timedelta(days=1)
-        prev_data = load_local_data(prev_day)
-        vids_diff = f"{vids-len(prev_data):,}"
-        chan_diff = f"{chan-len(pd.unique(prev_data['uploader'])):,}"
-        tdur_diff = htime(tdur - prev_data["duration"].sum())
-        mdur_diff = htime(mdur - prev_data["duration"].max())
-    except URLError as e:
-        vids_diff = chan_diff = tdur_diff = mdur_diff = None
-
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Videos", f"{vids:,}", vids_diff)
-col2.metric("Channels", f"{chan:,}", chan_diff)
-col3.metric("Duration", htime(tdur), tdur_diff)
-col4.metric("Longest", htime(mdur), mdur_diff, "inverse")
-
-"## Lexical Highlights"
-
-"### Top Tags"
-tags_count = st.slider("Number of tags to show", 10, 100, 50, 10)
-top_tags = get_tags(data, tags_count)
-wc = WordCloud()
-wc.generate_from_frequencies(top_tags.to_dict()["count"])
-fig, ax = plt.subplots()
-ax.imshow(wc)
-ax.axis("off")
-st.pyplot(fig)
-with st.expander("See tags frequency"):
-    st.table(top_tags)
-
-# "### Top Title Sumgrams"
-# sumgrams_count = st.slider("Number of sumgrams to show", 10, 100, 50, 10)
-# sumgram_size = st.slider("Base sumgram size", 1, 10, 3)
-# top_sumgrams_dict = get_sumgrams(data, sumgrams_count, sumgram_size)
-# wc = WordCloud()
-# wc.generate_from_frequencies(top_sumgrams_dict)
-# fig, ax = plt.subplots()
-# ax.imshow(wc)
-# ax.axis("off")
-# st.pyplot(fig)
-# with st.expander("See sumgram frequency"):
-#     st.table(
-#         pd.DataFrame(
-#             [(k, v) for k, v in top_sumgrams_dict.items()],
-#             columns=["sumgram", "frequency"],
-#         )
-#     )
-
-"### Languages"
-c = (
-    alt.Chart(data)
-    .mark_bar()
-    .encode(
-        x="count(language):Q",
-        y=alt.Y("language:N", sort="-x"),
-        tooltip=["language", "count(language)"],
     )
-)
-st.altair_chart(c, use_container_width=True)
+    st.altair_chart(c, use_container_width=True)
 
-"## Video Duration"
+    "## Video Duration"
 
-"### Duration Histogram"
-"Buckets: `0 sec`, `<1 min`, `<1 hr`, `>=1 hr`"
-hist = np.histogram(
-    data["duration"], bins=[0, 1, 60 - 1, 3600 - 1, data["duration"].max()]
-)[0]
-st.bar_chart(hist)
+    "### Duration Histogram"
+    "Buckets: `0 sec`, `<1 min`, `<1 hr`, `>=1 hr`"
+    hist = np.histogram(
+        data["duration"], bins=[0, 1, 60 - 1, 3600 - 1, data["duration"].max()]
+    )[0]
+    st.bar_chart(hist)
 
-"### Duration Summary"
-st.table(data["duration"].describe())
+    "### Duration Summary"
+    st.table(data["duration"].describe())
 
-"### Cumulative Sorted Duration"
-sdur = pd.DataFrame(
-    {
-        "videos": np.arange(vids) / vids * 100,
-        "duration": data["duration"].sort_values(ascending=False) / tdur * 100,
-    }
-)
-c = (
-    alt.Chart(sdur)
-    .mark_line()
-    .transform_window(cumulative_duration="sum(duration)")
-    .encode(x="videos:Q", y="cumulative_duration:Q")
-)
-st.altair_chart(c, use_container_width=True)
+    "### Cumulative Sorted Duration"
+    sdur = pd.DataFrame(
+        {
+            "videos": np.arange(vids) / vids * 100,
+            "duration": data["duration"].sort_values(ascending=False) / tdur * 100,
+        }
+    )
+    c = (
+        alt.Chart(sdur)
+        .mark_line()
+        .transform_window(cumulative_duration="sum(duration)")
+        .encode(x="videos:Q", y="cumulative_duration:Q")
+    )
+    st.altair_chart(c, use_container_width=True)
 
-"### Top Longest Videos"
-cols = st.columns(3)
-for i, v in enumerate(data.nlargest(9, "duration").itertuples()):
-    cols[i % 3].video(f"https://youtube.com/watch?v={v.id}")
-    cols[i % 3].write(f"[{htime(v.duration)}]")
+    "### Top Longest Videos"
+    cols = st.columns(3)
+    for i, v in enumerate(data.nlargest(9, "duration").itertuples()):
+        cols[i % 3].video(f"https://youtube.com/watch?v={v.id}")
+        cols[i % 3].write(f"[{htime(v.duration)}]")
 
-"## Category Duration"
-cat_dur = data.groupby("categories")["duration"].agg(
-    ["count", "sum", "mean", "min", "max"]
-)
-st.write(cat_dur)
+    "## Category Duration"
+    cat_dur = data.groupby("categories")["duration"].agg(
+        ["count", "sum", "mean", "min", "max"]
+    )
+    st.write(cat_dur)
 
-"### Videos by Category"
-st.bar_chart(cat_dur["count"])
+    "### Videos by Category"
+    st.bar_chart(cat_dur["count"])
 
-"### Duration by Category"
-st.bar_chart(cat_dur["sum"])
+    "### Duration by Category"
+    st.bar_chart(cat_dur["sum"])
 
-"### Mean Duration by Category"
-st.bar_chart(cat_dur["mean"])
+    "### Mean Duration by Category"
+    st.bar_chart(cat_dur["mean"])
 
-f"## Top {TOPCOUNT} Uploaders"
-top_uploaders = (
-    data.groupby(["uploader", "uploader"])["uploader"]
-    .agg(["count"])
-    .sort_values("count", ascending=False)
-    .head(TOPCOUNT)
-)
-st.write(top_uploaders)
+    f"## Top {TOPCOUNT} Uploaders"
+    top_uploaders = (
+        data.groupby(["uploader", "uploader"])["uploader"]
+        .agg(["count"])
+        .sort_values("count", ascending=False)
+        .head(TOPCOUNT)
+    )
+    st.write(top_uploaders)
 
-"## Miscellaneous"
-with st.expander("Metadata sample"):
-    st.write(data.head(10))
+    "## Miscellaneous"
+    with st.expander("Metadata sample"):
+        st.write(data.head(10))
+elif timewidth == "Week":
+    with st.spinner("Preparing relevant metadata..."):
+        weeklong_dataset = {}
+        for i in range(7):
+            try:
+                data = load_local_data(str(day - timedelta(days=i)), timewidth)
+                weeklong_dataset[f"{day - timedelta(days=i)}"] = {
+                    "Video Count": len(data),
+                    "Channel Count": len(pd.unique(data["uploader"])),
+                    "Sum Duration (hours)": data["duration"].sum(),
+                    "Max Duration (hours)": data["duration"].max(),
+                }
+            except (URLError, KeyError, ValueError) as e:
+                print(e)
+                weeklong_dataset[f"{day - timedelta(days=i)}"] = {
+                    "Video Count": 0,
+                    "Channel Count": 0,
+                    "Sum Duration (hours)": 0,
+                    "Max Duration (hours)": 0,
+                }
+
+    dataframe = pd.DataFrame.from_dict(weeklong_dataset, orient="index")
+
+    "## Comparison of Metrics"
+
+    "### Video Count"
+    st.bar_chart(dataframe, y="Video Count")
+
+    "### Channel Count"
+    st.bar_chart(dataframe, y="Channel Count")
+
+    "### Total Duration of Videos"
+    st.bar_chart(dataframe, y="Sum Duration (hours)")
+
+    "### Max Video Length"
+    st.bar_chart(dataframe, y="Max Duration (hours)")
