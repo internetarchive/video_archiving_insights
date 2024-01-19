@@ -105,15 +105,16 @@ max_value = (
     else datetime.utcnow().date() - timedelta(days=1)
 )
 
-qp = st.experimental_get_query_params()
-if "date" not in st.session_state and qp.get("date"):
-    st.session_state["date"] = datetime.strptime(qp.get("date")[0], "%Y-%m-%d").date()
-else:
-    st.session_state["date"] = max_value
+if "date" not in st.query_params:
+    st.query_params.date = max_value
 
 day = st.date_input(
-    "Videos archived on", value=st.session_state["date"], max_value=max_value
+    "Videos archived on",
+    value=datetime.strptime(st.query_params.date, "%Y-%m-%d").date(),
+    max_value=max_value,
 )
+
+st.query_params.date = str(day)
 
 timewidth_options = ["Day", "Week"]
 timewidth = st.selectbox(
@@ -122,7 +123,7 @@ timewidth = st.selectbox(
     index=0,
 )
 
-st.experimental_set_query_params(date=day)
+# st.experimental_set_query_params(date=day)
 
 if timewidth == "Day":
     with st.spinner("Preparing relevant metadata..."):
