@@ -106,6 +106,16 @@ def update_timewidth():
     st.query_params.timewidth = st.session_state.timewidth
 
 
+def convert_timewidth_to_days(timewidth):
+    try:
+        if timewidth == "Week":
+            return 7
+        elif timewidth == "Month":
+            return 28
+    except Exception as exc:
+        raise ValueError("Invalid timewidth argument passed") from exc
+
+
 # this gives the metadata generation an hour to complete before allowing the user to access it
 max_value = (
     datetime.utcnow().date() - timedelta(days=2)
@@ -126,7 +136,7 @@ day = st.date_input(
     on_change=update_date,
 )
 
-timewidth_options = ["Day", "Week"]
+timewidth_options = ["Day", "Week", "Month"]
 timewidth = st.selectbox(
     "View Mode",
     options=timewidth_options,
@@ -273,10 +283,10 @@ if timewidth == "Day":
     "## Miscellaneous"
     with st.expander("Metadata sample"):
         st.write(data.head(10))
-elif timewidth == "Week":
+elif timewidth == "Week" or timewidth == "Month":
     with st.spinner("Preparing relevant metadata..."):
         weeklong_dataset = {}
-        for i in range(7):
+        for i in range(convert_timewidth_to_days(timewidth)):
             try:
                 data = load_local_data(str(day - timedelta(days=i)), timewidth)
                 weeklong_dataset[f"{day - timedelta(days=i)}"] = {
