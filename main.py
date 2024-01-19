@@ -122,6 +122,13 @@ day = st.date_input(
     "Videos archived on", value=st.session_state["date"], max_value=max_value
 )
 
+timewidth_options = ["Day", "Week"]
+timewidth = st.selectbox(
+    "View Mode",
+    options=timewidth_options,
+    index=0,
+)
+
 st.experimental_set_query_params(date=day)
 
 with st.spinner("Preparing relevant metadata..."):
