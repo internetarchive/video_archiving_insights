@@ -53,7 +53,7 @@ def load_local_data(day: str, _timewidth: str):
         try:
             download_metadata(day)
         except FileNotFoundError as fileerror:
-            st.warning(f"Failed to load metadata for the day: {day}")
+            st.warning(f"Some or all metadata files missing for the day: {day}")
             print(fileerror)
             if _timewidth == "Day":
                 st.stop()
